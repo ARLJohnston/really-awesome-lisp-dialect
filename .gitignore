@@ -16,3 +16,6 @@
 
 # ...even if they are in subdirectories
 !*/
+
+# Ignore _build no matter what though
+/_build/
