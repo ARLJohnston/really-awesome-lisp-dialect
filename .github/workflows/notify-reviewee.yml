@@ -1,0 +1,42 @@
+name: "Notify Reviewee on Discord"
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  notify:
+    name: Notify PR Author
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login != null
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Discord User ID
+        id: discord_id
+        run: |
+          GITHUB_USER="${{ github.event.pull_request.user.login }}"
+          DISCORD_ID=$(jq -r --arg user "$GITHUB_USER" '.[$user] // empty' .github/discord-users.json)
+
+          if [ -n "$DISCORD_ID" ]; then
+            echo "user_id=$DISCORD_ID" >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Discord Notification
+        if: steps.discord_id.outputs.found == 'true'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+          -d "{
+            \"content\": \"Hey <@${{ steps.discord_id.outputs.user_id }}>! Your pull request has received a review.\",
+            \"embeds\": [{
+              \"title\": \"Pull Request Review: ${{ github.event.pull_request.title }}\",
+              \"url\": \"${{ github.event.pull_request.html_url }}\",
+              \"description\": \"Repository: \`${{ github.event.repository.full_name }}\`\\nReviewed by: \`${{ github.event.review.user.login }}\`\\nState: \`${{ github.event.review.state }}\`\",
+              \"color\": 15258703
+            }]
+          }" \
+          ${{ secrets.DISCORD_WEBHOOK_URL }}
