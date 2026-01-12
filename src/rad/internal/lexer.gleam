@@ -2,7 +2,7 @@ import gleam/float
 import gleam/int
 import gleam/list
 import gleam/string
-import lib/tokens.{type Token}
+import rad/internal/tokens.{type Token}
 
 pub type LexError {
   InvalidExpression(String)
@@ -43,7 +43,7 @@ fn lex_chars(
   }
 }
 
-fn split_at_delim(
+pub fn split_at_delim(
   chars: List(String),
   acc: List(String),
 ) -> #(List(String), List(String)) {

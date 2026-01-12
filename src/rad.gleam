@@ -1,7 +1,7 @@
 import gleam/io
 import gleam/result
 import gleam/string
-import lib/lexer
+import rad/internal/lexer
 import simplifile
 
 pub fn main() -> Nil {

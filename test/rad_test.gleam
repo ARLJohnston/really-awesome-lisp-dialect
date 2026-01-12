@@ -1,13 +1,25 @@
 import gleeunit
+import gleam/list
+import rad/internal/lexer
 
 pub fn main() -> Nil {
   gleeunit.main()
 }
 
-// gleeunit test functions end in `_test`
-pub fn hello_world_test() {
-  let name = "Joe"
-  let greeting = "Hello, " <> name <> "!"
+type DelimTable {
+  DelimTable(input: List(String), want: #(List(String), List(String)))
+}
 
-  assert greeting == "Hello, Joe!"
+pub fn split_at_delim_test() {
+  let tables = [
+    DelimTable(["hello"], #(["hello"], []))
+  ]
+
+
+  tables
+  |> list.each(fn(table) {
+    let got = lexer.split_at_delim(table.input, [])
+
+    assert got == table.want
+  })
 }
