@@ -9,13 +9,14 @@
 !*.nix
 !flake.lock
 
-!dune
-!dune-project
-!*.opam
-!*.ml
+!gleam.toml
+!manifest.toml
+!*.gleam
+
+!/.github/**
 
 # ...even if they are in subdirectories
 !*/
 
-# Ignore _build no matter what though
-/_build/
+# Ignore build no matter what though
+/build/

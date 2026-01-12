@@ -1,4 +1,0 @@
-(executable
- (public_name really-awesome-lisp-dialect)
- (name main)
- (libraries really_awesome_lisp_dialect))
