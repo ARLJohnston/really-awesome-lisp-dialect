@@ -1,5 +1,5 @@
-import gleeunit
 import gleam/list
+import gleeunit
 import rad/internal/lexer
 
 pub fn main() -> Nil {
@@ -11,10 +11,7 @@ type DelimTable {
 }
 
 pub fn split_at_delim_test() {
-  let tables = [
-    DelimTable(["hello"], #(["hello"], []))
-  ]
-
+  let tables = [DelimTable(["hello"], #(["hello"], []))]
 
   tables
   |> list.each(fn(table) {
