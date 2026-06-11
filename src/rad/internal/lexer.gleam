@@ -26,14 +26,22 @@ fn lex_chars(
 ) -> Result(List(Token), LexError) {
   case chars {
     [] -> Ok(list.reverse(acc))
+
     ["(", ..rest] -> lex_chars(rest, [tokens.LParen, ..acc])
     [")", ..rest] -> lex_chars(rest, [tokens.RParen, ..acc])
+
+    [";", ..rest] -> {
+      let #(comment, rest) = lex_comment(rest, [])
+      lex_chars(rest, [tokens.Comment(comment), ..acc])
+    }
+
     ["\"", ..rest] -> {
       result.try(lex_string(rest, []), fn(res) {
         let #(str, rest) = res
         lex_chars(rest, [tokens.Str(str), ..acc])
       })
     }
+
     [char, ..rest] ->
       case is_whitespace(char) {
         True -> lex_chars(rest, acc)
@@ -56,7 +64,10 @@ fn lex_chars(
   }
 }
 
-pub fn lex_string(chars, acc) -> Result(#(String, List(String)), LexError) {
+pub fn lex_string(
+  chars: List(String),
+  acc: List(String),
+) -> Result(#(String, List(String)), LexError) {
   case chars {
     [] -> Error(unterminated_string_error)
 
@@ -101,5 +112,22 @@ pub fn is_whitespace(char: String) -> Bool {
   case char {
     " " | "\n" | "\r" | "\t" -> True
     _ -> False
+  }
+}
+
+pub fn lex_comment(
+  chars: List(String),
+  acc: List(String),
+) -> #(String, List(String)) {
+  case chars {
+    [] -> {
+      let comment = acc |> list.reverse() |> string.join("")
+      #(comment, [])
+    }
+    ["\n", ..rest] -> {
+      let comment = acc |> list.reverse() |> string.join("")
+      #(comment, rest)
+    }
+    [char, ..rest] -> lex_comment(rest, [char, ..acc])
   }
 }

@@ -23,6 +23,10 @@ type LexTable {
   LexTable(input: String, want: Result(List(tokens.Token), lexer.LexError))
 }
 
+type CommentTable {
+  CommentTable(input: List(String), want: #(String, List(String)))
+}
+
 pub fn split_at_delim_test() {
   let tables = [
     // no delimiter: consume everything, nothing left over
@@ -99,6 +103,32 @@ pub fn lex_string_test() {
   })
 }
 
+pub fn lex_comment_test() {
+  // NB: the `;` is already consumed by lex_chars before lex_comment is called
+  let tables = [
+    // runs to EOF with no newline: whole input is the comment, nothing left
+    CommentTable(string.to_graphemes("a comment"), #("a comment", [])),
+    // newline terminates the comment and is consumed; the rest is handed back
+    CommentTable(
+      string.to_graphemes("a comment\nfoo"),
+      #("a comment", ["f", "o", "o"]),
+    ),
+    // bare `;` at EOF -> empty comment, nothing left over
+    CommentTable(string.to_graphemes(""), #("", [])),
+    // bare `;` then newline -> empty comment, rest after the newline
+    CommentTable(string.to_graphemes("\nfoo"), #("", ["f", "o", "o"])),
+    // the comment body is literal text: parens, quotes, ; don't re-trigger lexing
+    CommentTable(string.to_graphemes("; (a) \"x"), #("; (a) \"x", [])),
+  ]
+
+  tables
+  |> list.each(fn(table) {
+    let got = lexer.lex_comment(table.input, [])
+
+    assert got == table.want
+  })
+}
+
 pub fn lex_test() {
   let tables = [
     // empty / whitespace-only input lexes to no tokens
@@ -165,6 +195,23 @@ pub fn lex_test() {
         tokens.RParen,
       ]),
     ),
+
+    // -- comments
+    // a whole-line comment lexes to a single Comment token
+    LexTable(";comment", Ok([tokens.Comment("comment")])),
+    // mid-list: comment ends at the newline and does NOT swallow `b`
+    LexTable(
+      "(a ; hi\n b)",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("a"),
+        tokens.Comment(" hi"),
+        tokens.Symbol("b"),
+        tokens.RParen,
+      ]),
+    ),
+    // bare `;` at EOF -> empty Comment
+    LexTable("foo ;", Ok([tokens.Symbol("foo"), tokens.Comment("")])),
 
     // -- error propagation
     LexTable("(foo \"bar)", Error(lexer.unterminated_string_error)),
