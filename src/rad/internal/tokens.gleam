@@ -4,6 +4,7 @@ pub type Token {
 
   Symbol(String)
 
+  Str(String)
   Integer(Int)
   Floating(Float)
 }
