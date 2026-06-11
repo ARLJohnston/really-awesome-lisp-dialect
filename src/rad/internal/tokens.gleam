@@ -2,6 +2,7 @@ pub type Token {
   LParen
   RParen
 
+  Dot
   Quote
 
   Symbol(String)

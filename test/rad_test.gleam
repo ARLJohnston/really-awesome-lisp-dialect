@@ -149,6 +149,49 @@ pub fn lex_test() {
     LexTable("3.14", Ok([tokens.Floating(3.14)])),
     LexTable("foo", Ok([tokens.Symbol("foo")])),
     LexTable("+", Ok([tokens.Symbol("+")])),
+    // underscores are digit separators, which get filtered out before parsing
+    LexTable("1_000", Ok([tokens.Integer(1000)])),
+    LexTable("1_000.5", Ok([tokens.Floating(1000.5)])),
+    // but underscores in a non-number are ok
+    LexTable("my_var", Ok([tokens.Symbol("my_var")])),
+
+    // -- dot: a lone `.` is the cons / dotted-pair marker
+    LexTable(
+      "(a . b)",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("a"),
+        tokens.Dot,
+        tokens.Symbol("b"),
+        tokens.RParen,
+      ]),
+    ),
+    // a `.` *inside* a token is untouched
+    LexTable("foo.bar", Ok([tokens.Symbol("foo.bar")])),
+    // only a *lone* dot is special: `...` stays an ordinary symbol
+    LexTable("...", Ok([tokens.Symbol("...")])),
+    // `.b` has no delimiter after the dot, so it's a symbol, not a Dot
+    LexTable(
+      "(a .b)",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("a"),
+        tokens.Symbol(".b"),
+        tokens.RParen,
+      ]),
+    ),
+
+    // -- unpolished number behavior, will clean up later
+    LexTable("_100", Ok([tokens.Integer(100)])),
+    // leading underscore swallowed
+    LexTable("100_", Ok([tokens.Integer(100)])),
+    // trailing underscore swallowed
+    LexTable("1__0", Ok([tokens.Integer(10)])),
+    // doubled underscore swallowed
+    // these float-ish forms fall through to Symbol since parse_float wants digits
+    // on both sides of the dot
+    LexTable(".5", Ok([tokens.Symbol(".5")])),
+    LexTable("5.", Ok([tokens.Symbol("5.")])),
 
     // -- lists
     LexTable(

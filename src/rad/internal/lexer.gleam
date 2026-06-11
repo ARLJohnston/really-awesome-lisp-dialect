@@ -51,12 +51,16 @@ fn lex_chars(
           let #(token_chars, rest) = split_at_delim(chars, [])
           let token_str = string.join(token_chars, "")
 
-          let token = case float.parse(token_str) {
-            Ok(n) -> tokens.Floating(n)
-            Error(_) ->
-              case int.parse(token_str) {
-                Ok(n) -> tokens.Integer(n)
-                Error(_) -> tokens.Symbol(token_str)
+          let token = case token_str {
+            "." -> tokens.Dot
+            _ ->
+              case parse_num(token_str, float.parse) {
+                Ok(n) -> tokens.Floating(n)
+                Error(_) ->
+                  case parse_num(token_str, int.parse) {
+                    Ok(n) -> tokens.Integer(n)
+                    Error(_) -> tokens.Symbol(token_str)
+                  }
               }
           }
 
@@ -132,4 +136,17 @@ pub fn lex_comment(
     }
     [char, ..rest] -> lex_comment(rest, [char, ..acc])
   }
+}
+
+// wayyyy too loose, allows stuff like 1_0_0_______ to be parsed as 100
+// for now allowing these weird numbers though
+pub fn parse_num(
+  str: String,
+  parser_fn: fn(String) -> Result(a, Nil),
+) -> Result(a, Nil) {
+  str
+  |> string.to_graphemes()
+  |> list.filter(fn(char) { char != "_" })
+  |> string.join("")
+  |> parser_fn()
 }
