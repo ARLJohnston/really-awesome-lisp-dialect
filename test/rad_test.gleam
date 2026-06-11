@@ -196,6 +196,23 @@ pub fn lex_test() {
       ]),
     ),
 
+    // -- quote
+    // no space case: ' against a symbol splits cleanly
+    LexTable("'foo", Ok([tokens.Quote, tokens.Symbol("foo")])),
+    // split case: ' against a list
+    LexTable(
+      "'(a b)",
+      Ok([
+        tokens.Quote,
+        tokens.LParen,
+        tokens.Symbol("a"),
+        tokens.Symbol("b"),
+        tokens.RParen,
+      ]),
+    ),
+    // nested quoting just works: '' is two Quote tokens
+    LexTable("''foo", Ok([tokens.Quote, tokens.Quote, tokens.Symbol("foo")])),
+
     // -- comments
     // a whole-line comment lexes to a single Comment token
     LexTable(";comment", Ok([tokens.Comment("comment")])),

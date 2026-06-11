@@ -30,6 +30,8 @@ fn lex_chars(
     ["(", ..rest] -> lex_chars(rest, [tokens.LParen, ..acc])
     [")", ..rest] -> lex_chars(rest, [tokens.RParen, ..acc])
 
+    ["'", ..rest] -> lex_chars(rest, [tokens.Quote, ..acc])
+
     [";", ..rest] -> {
       let #(comment, rest) = lex_comment(rest, [])
       lex_chars(rest, [tokens.Comment(comment), ..acc])
