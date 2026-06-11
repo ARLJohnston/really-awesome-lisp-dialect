@@ -2,6 +2,7 @@ import gleam/list
 import gleam/string
 import gleeunit
 import rad/internal/lexer
+import rad/internal/tokens
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -16,6 +17,10 @@ type StringTable {
     input: List(String),
     want: Result(#(String, List(String)), lexer.LexError),
   )
+}
+
+type LexTable {
+  LexTable(input: String, want: Result(List(tokens.Token), lexer.LexError))
 }
 
 pub fn split_at_delim_test() {
@@ -54,12 +59,12 @@ pub fn lex_string_test() {
     // empty string: just a closing quote -> empty contents
     StringTable(string.to_graphemes("\""), Ok(#("", []))),
 
-    // -- escapes (input has a real backslash so the escape branch fires)
+    // -- escapes
     // \n is translated to a real newline. graphemes: ["a", "\\", "n", "\""]
     StringTable(string.to_graphemes("a\\n\""), Ok(#("a\n", []))),
     // \t is translated to a real tab. graphemes: ["a", "\\", "t", "\""]
     StringTable(string.to_graphemes("a\\t\""), Ok(#("a\t", []))),
-    // escaped quote: \" stores a literal " and does NOT close the string;
+    // escaped quote: \" stores a literal " and does NOT close the string
     // the second quote closes it. graphemes: ["b","a","z","\\","\"","\""]
     StringTable(string.to_graphemes("baz\\\"\""), Ok(#("baz\"", []))),
     // escaped backslash: \\ stores a single literal backslash.
@@ -69,10 +74,8 @@ pub fn lex_string_test() {
     // graphemes: ["\\", "q", "\""]
     StringTable(string.to_graphemes("\\q\""), Ok(#("q", []))),
 
-    // -- delimiters are literal inside a string (unlike split_at_delim)
-    // spaces are kept, not treated as separators
+    // -- delimiters are literal inside a string
     StringTable(string.to_graphemes("a b\""), Ok(#("a b", []))),
-    // parens are kept as ordinary characters, not tokenised
     StringTable(string.to_graphemes("(x)\""), Ok(#("(x)", []))),
 
     // unterminated: input runs out before a closing quote
@@ -95,4 +98,82 @@ pub fn lex_string_test() {
     assert got == table.want
   })
 }
-// todo: integration tests for `lex`
+
+pub fn lex_test() {
+  let tables = [
+    // empty / whitespace-only input lexes to no tokens
+    LexTable("", Ok([])),
+    LexTable("   ", Ok([])),
+    // leading/trailing whitespace is trimmed off before lexing
+    LexTable("  (a)  ", Ok([tokens.LParen, tokens.Symbol("a"), tokens.RParen])),
+
+    // newline, tab, return treated as whitespace
+    LexTable(
+      "(a\n\t\rb)",
+      Ok([tokens.LParen, tokens.Symbol("a"), tokens.Symbol("b"), tokens.RParen]),
+    ),
+
+    // -- float, then int, then symbol
+    LexTable("42", Ok([tokens.Integer(42)])),
+    LexTable("-7", Ok([tokens.Integer(-7)])),
+    LexTable("3.14", Ok([tokens.Floating(3.14)])),
+    LexTable("foo", Ok([tokens.Symbol("foo")])),
+    LexTable("+", Ok([tokens.Symbol("+")])),
+
+    // -- lists
+    LexTable(
+      "(foo bar)",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("foo"),
+        tokens.Symbol("bar"),
+        tokens.RParen,
+      ]),
+    ),
+    LexTable("(foo)", Ok([tokens.LParen, tokens.Symbol("foo"), tokens.RParen])),
+    LexTable(
+      "(a (b c))",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("a"),
+        tokens.LParen,
+        tokens.Symbol("b"),
+        tokens.Symbol("c"),
+        tokens.RParen,
+        tokens.RParen,
+      ]),
+    ),
+    // every token kind
+    LexTable(
+      "(+ 1 2.0 \"hi\")",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("+"),
+        tokens.Integer(1),
+        tokens.Floating(2.0),
+        tokens.Str("hi"),
+        tokens.RParen,
+      ]),
+    ),
+    // a string with spaces inside stays a single `Str` token
+    LexTable(
+      "(echo \"a b\")",
+      Ok([
+        tokens.LParen,
+        tokens.Symbol("echo"),
+        tokens.Str("a b"),
+        tokens.RParen,
+      ]),
+    ),
+
+    // -- error propagation
+    LexTable("(foo \"bar)", Error(lexer.unterminated_string_error)),
+  ]
+
+  tables
+  |> list.each(fn(table) {
+    let got = lexer.lex(table.input)
+
+    assert got == table.want
+  })
+}

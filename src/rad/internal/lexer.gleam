@@ -28,29 +28,31 @@ fn lex_chars(
     [] -> Ok(list.reverse(acc))
     ["(", ..rest] -> lex_chars(rest, [tokens.LParen, ..acc])
     [")", ..rest] -> lex_chars(rest, [tokens.RParen, ..acc])
-    [" ", ..rest] -> lex_chars(rest, acc)
     ["\"", ..rest] -> {
       result.try(lex_string(rest, []), fn(res) {
         let #(str, rest) = res
         lex_chars(rest, [tokens.Str(str), ..acc])
       })
     }
+    [char, ..rest] ->
+      case is_whitespace(char) {
+        True -> lex_chars(rest, acc)
+        False -> {
+          let #(token_chars, rest) = split_at_delim(chars, [])
+          let token_str = string.join(token_chars, "")
 
-    _ -> {
-      let #(token_chars, rest) = split_at_delim(chars, [])
-      let token_str = string.join(token_chars, "")
-
-      let token = case float.parse(token_str) {
-        Ok(n) -> tokens.Floating(n)
-        Error(_) ->
-          case int.parse(token_str) {
-            Ok(n) -> tokens.Integer(n)
-            Error(_) -> tokens.Symbol(token_str)
+          let token = case float.parse(token_str) {
+            Ok(n) -> tokens.Floating(n)
+            Error(_) ->
+              case int.parse(token_str) {
+                Ok(n) -> tokens.Integer(n)
+                Error(_) -> tokens.Symbol(token_str)
+              }
           }
-      }
 
-      lex_chars(rest, [token, ..acc])
-    }
+          lex_chars(rest, [token, ..acc])
+        }
+      }
   }
 }
 
@@ -82,10 +84,22 @@ pub fn split_at_delim(
   acc: List(String),
 ) -> #(List(String), List(String)) {
   case chars {
-    [" ", ..rest] -> #(list.reverse(acc), rest)
     ["(", ..rest] -> #(list.reverse(acc), ["(", ..rest])
     [")", ..rest] -> #(list.reverse(acc), [")", ..rest])
-    [char, ..rest] -> split_at_delim(rest, [char, ..acc])
+    [char, ..rest] ->
+      case is_whitespace(char) {
+        True -> #(list.reverse(acc), rest)
+        False -> {
+          split_at_delim(rest, [char, ..acc])
+        }
+      }
     [] -> #(list.reverse(acc), [])
+  }
+}
+
+pub fn is_whitespace(char: String) -> Bool {
+  case char {
+    " " | "\n" | "\r" | "\t" -> True
+    _ -> False
   }
 }
