@@ -7,21 +7,6 @@ type DelimTable {
   DelimTable(input: List(String), want: #(List(String), List(String)))
 }
 
-type StringTable {
-  StringTable(
-    input: List(String),
-    want: Result(#(String, List(String)), lexer.LexError),
-  )
-}
-
-type LexTable {
-  LexTable(input: String, want: Result(List(tokens.Token), lexer.LexError))
-}
-
-type CommentTable {
-  CommentTable(input: List(String), want: #(String, List(String)))
-}
-
 pub fn split_at_delim_test() {
   let tables = [
     // no delimiter: consume everything, nothing left over
@@ -44,6 +29,13 @@ pub fn split_at_delim_test() {
 
     assert got == table.want
   })
+}
+
+type StringTable {
+  StringTable(
+    input: List(String),
+    want: Result(#(String, List(String)), lexer.LexError),
+  )
 }
 
 pub fn lex_string_test() {
@@ -98,6 +90,10 @@ pub fn lex_string_test() {
   })
 }
 
+type CommentTable {
+  CommentTable(input: List(String), want: #(String, List(String)))
+}
+
 pub fn lex_comment_test() {
   // NB: the `;` is already consumed by lex_chars before lex_comment is called
   let tables = [
@@ -122,6 +118,10 @@ pub fn lex_comment_test() {
 
     assert got == table.want
   })
+}
+
+type LexTable {
+  LexTable(input: String, want: Result(List(tokens.Token), lexer.LexError))
 }
 
 pub fn lex_test() {
