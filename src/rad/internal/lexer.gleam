@@ -2,8 +2,8 @@ import gleam/bool
 import gleam/list
 import gleam/result
 import gleam/string
-import rad/internal/tokens.{type Token}
 import rad/internal/number
+import rad/internal/tokens.{type Token}
 
 pub type LexError {
   InvalidExpression(String)
