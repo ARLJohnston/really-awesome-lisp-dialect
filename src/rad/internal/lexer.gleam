@@ -1,9 +1,9 @@
-import gleam/float
-import gleam/int
+import gleam/bool
 import gleam/list
 import gleam/result
 import gleam/string
 import rad/internal/tokens.{type Token}
+import rad/internal/number
 
 pub type LexError {
   InvalidExpression(String)
@@ -12,6 +12,10 @@ pub type LexError {
 pub const unterminated_string_error: LexError = InvalidExpression(
   "Did you forget to close your string there bud?",
 )
+
+fn number_error(str: String, reason: String) -> LexError {
+  InvalidExpression("invalid number `" <> str <> "`: " <> reason)
+}
 
 pub fn lex(input: String) -> Result(List(Token), LexError) {
   input
@@ -44,29 +48,42 @@ fn lex_chars(
       })
     }
 
-    [char, ..rest] ->
-      case is_whitespace(char) {
-        True -> lex_chars(rest, acc)
-        False -> {
-          let #(token_chars, rest) = split_at_delim(chars, [])
-          let token_str = string.join(token_chars, "")
+    [char, ..rest] -> {
+      use <- bool.guard(is_whitespace(char), lex_chars(rest, acc))
 
-          let token = case token_str {
-            "." -> tokens.Dot
-            _ ->
-              case parse_num(token_str, float.parse) {
-                Ok(n) -> tokens.Floating(n)
-                Error(_) ->
-                  case parse_num(token_str, int.parse) {
-                    Ok(n) -> tokens.Integer(n)
-                    Error(_) -> tokens.Symbol(token_str)
-                  }
-              }
-          }
+      let #(token_chars, rest) = split_at_delim(chars, [])
+
+      case string.join(token_chars, "") {
+        "." -> lex_chars(rest, [tokens.Dot, ..acc])
+
+        str -> {
+          use <- bool.guard(
+            !number.is_number_start(str),
+            lex_chars(rest, [tokens.Symbol(str), ..acc]),
+          )
+
+          use token <- result.try(case string.contains(str, ".") {
+            True -> {
+              number.parse_to_float(str)
+              |> result.map_error(fn(e) {
+                number_error(str, number.describe_number(e))
+              })
+              |> result.map(tokens.Floating)
+            }
+
+            False -> {
+              number.parse_to_int(str)
+              |> result.map_error(fn(e) {
+                number_error(str, number.describe_group(e))
+              })
+              |> result.map(tokens.Integer)
+            }
+          })
 
           lex_chars(rest, [token, ..acc])
         }
       }
+    }
   }
 }
 
@@ -136,17 +153,4 @@ pub fn lex_comment(
     }
     [char, ..rest] -> lex_comment(rest, [char, ..acc])
   }
-}
-
-// wayyyy too loose, allows stuff like 1_0_0_______ to be parsed as 100
-// for now allowing these weird numbers though
-pub fn parse_num(
-  str: String,
-  parser_fn: fn(String) -> Result(a, Nil),
-) -> Result(a, Nil) {
-  str
-  |> string.to_graphemes()
-  |> list.filter(fn(char) { char != "_" })
-  |> string.join("")
-  |> parser_fn()
 }

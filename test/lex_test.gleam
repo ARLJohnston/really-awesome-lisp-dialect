@@ -177,16 +177,31 @@ pub fn lex_test() {
     ),
 
     // -- unpolished number behavior, will clean up later
-    LexTable("_100", Ok([tokens.Integer(100)])),
-    // leading underscore swallowed
-    LexTable("100_", Ok([tokens.Integer(100)])),
-    // trailing underscore swallowed
-    LexTable("1__0", Ok([tokens.Integer(10)])),
-    // doubled underscore swallowed
-    // these float-ish forms fall through to Symbol since parse_float wants digits
-    // on both sides of the dot
+    // leading underscore makes it a symbol
+    LexTable("_100", Ok([tokens.Symbol("_100")])),
+    // trailing underscore is a parse error
+    LexTable(
+      "100_",
+      Error(lexer.InvalidExpression(
+        "invalid number `100_`: cannot end with an underscore",
+      )),
+    ),
+    // doubled underscore is a parse error
+    LexTable(
+      "1__0",
+      Error(lexer.InvalidExpression(
+        "invalid number `1__0`: cannot contain consecutive underscores",
+      )),
+    ),
+    // doesn't start with a digit, so it's a symbol
     LexTable(".5", Ok([tokens.Symbol(".5")])),
-    LexTable("5.", Ok([tokens.Symbol("5.")])),
+    // starts with a digit, so it's potentially a number
+    LexTable(
+      "5.",
+      Error(lexer.InvalidExpression(
+        "invalid number `5.`: fractional part: is empty",
+      )),
+    ),
 
     // -- lists
     LexTable(
